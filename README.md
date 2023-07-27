@@ -52,6 +52,24 @@ We're actively looking for community maintainers, so please reach out if interes
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
+# 🎙️ Wake-up Word Feature
+
+The wake-up word feature allows you to specify a word or phrase that will interrupt the bot's speech. This is useful for creating more interactive and responsive voice-based LLM apps. To use this feature, simply set the `wake_word` parameter in the `StreamingConversation` class to your desired wake-up word.
+
+```python
+conversation = StreamingConversation(
+    output_device=speaker_output,
+    transcriber=DeepgramTranscriber(
+        DeepgramTranscriberConfig.from_input_device(
+            microphone_input,
+            endpointing_config=PunctuationEndpointingConfig(),
+            wake_word="Alexa",
+        )
+    ),
+    ...
+)
+```
+
 # 🫂 Contribution and Roadmap
 
 We're an open source project and are extremely open to contributors adding new features, integrations, and documentation! Please don't hesitate to reach out and get started building with us.
