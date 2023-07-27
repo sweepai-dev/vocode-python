@@ -116,42 +116,26 @@ class AbstractAgent(Generic[AgentConfigType]):
         return random.choice(on_cut_off_messages).text
 
 
-class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
+class AgentConfig:
     def __init__(
         self,
-        agent_config: AgentConfigType,
-        action_factory: ActionFactory = ActionFactory(),
-        interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
-        logger: Optional[logging.Logger] = None,
+        actions: Optional[List[ActionConfig]] = None,
+        generate_responses: bool = True,
+        send_filler_audio: Union[bool, FillerAudioConfig] = False,
+        end_conversation_on_goodbye: bool = False,
+        allowed_idle_time_seconds: Optional[int] = None,
+        mute_during_speech: bool = False,
+        allow_human_to_cut_off_bot: bool = False,
+        wake_up_word: Optional[str] = None,
     ):
-        self.input_queue: asyncio.Queue[
-            InterruptibleEvent[AgentInput]
-        ] = asyncio.Queue()
-        self.output_queue: asyncio.Queue[
-            InterruptibleEvent[AgentResponse]
-        ] = asyncio.Queue()
-        AbstractAgent.__init__(self, agent_config=agent_config)
-        InterruptibleWorker.__init__(
-            self,
-            input_queue=self.input_queue,
-            output_queue=self.output_queue,
-            interruptible_event_factory=interruptible_event_factory,
-        )
-        self.action_factory = action_factory
-        self.actions_queue: asyncio.Queue[
-            InterruptibleEvent[ActionInput]
-        ] = asyncio.Queue()
-        self.logger = logger or logging.getLogger(__name__)
-        self.goodbye_model = None
-        if self.agent_config.end_conversation_on_goodbye:
-            self.goodbye_model = GoodbyeModel()
-            self.goodbye_model_initialize_task = asyncio.create_task(
-                self.goodbye_model.initialize_embeddings()
-            )
-        self.transcript: Optional[Transcript] = None
-
-        self.functions = self.get_functions() if self.agent_config.actions else None
-        self.is_muted = False
+        self.actions = actions
+        self.generate_responses = generate_responses
+        self.send_filler_audio = send_filler_audio
+        self.end_conversation_on_goodbye = end_conversation_on_goodbye
+        self.allowed_idle_time_seconds = allowed_idle_time_seconds
+        self.mute_during_speech = mute_during_speech
+        self.allow_human_to_cut_off_bot = allow_human_to_cut_off_bot
+        self.wake_up_word = wake_up_word
 
     def get_functions(self):
         raise NotImplementedError
