@@ -105,6 +105,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         transcription.message, transcription.confidence
                     )
                 )
+            wake_up_word = self.conversation.agent.get_agent_config().wake_up_word
             if (
                 not self.conversation.is_human_speaking
                 and transcription.confidence
@@ -112,6 +113,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
                     or 0
                 )
+                and (wake_up_word is None or wake_up_word in transcription.message)
             ):
                 self.conversation.current_transcription_is_interrupt = (
                     self.conversation.broadcast_interrupt()
@@ -437,31 +439,33 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.actions_worker.start()
         is_ready = await self.transcriber.ready()
         if not is_ready:
-            raise Exception("Transcriber startup failed")
-        if self.agent.get_agent_config().send_filler_audio:
-            if not isinstance(
-                self.agent.get_agent_config().send_filler_audio, FillerAudioConfig
-            ):
-                self.filler_audio_config = FillerAudioConfig()
-            else:
-                self.filler_audio_config = typing.cast(
-                    FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
+        async def process(self, transcription: Transcription):
+            self.conversation.mark_last_action_timestamp()
+            if transcription.message.strip() == "":
+                self.conversation.logger.info("Ignoring empty transcription")
+                return
+            if transcription.is_final:
+                self.conversation.logger.debug(
+                    "Got transcription: {}, confidence: {}".format(
+                        transcription.message, transcription.confidence
+                    )
                 )
-            await self.synthesizer.set_filler_audios(self.filler_audio_config)
-        self.agent.start()
-        self.agent.attach_transcript(self.transcript)
-        if mark_ready:
-            await mark_ready()
-        if self.synthesizer.get_synthesizer_config().sentiment_config:
-            await self.update_bot_sentiment()
-        self.active = True
-        if self.synthesizer.get_synthesizer_config().sentiment_config:
-            self.track_bot_sentiment_task = asyncio.create_task(
-                self.track_bot_sentiment()
-            )
-        self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
-        if len(self.events_manager.subscriptions) > 0:
-            self.events_task = asyncio.create_task(self.events_manager.start())
+            wake_up_word = self.conversation.agent.get_agent_config().wake_up_word
+            if (
+                not self.conversation.is_human_speaking
+                and transcription.confidence
+                >= (
+                    self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
+                    or 0
+                )
+                and (wake_up_word is None or wake_up_word in transcription.message)
+            ):
+                self.conversation.current_transcription_is_interrupt = (
+                    self.conversation.broadcast_interrupt()
+                )
+                if self.conversation.current_transcription_is_interrupt:
+                    self.conversation.logger.debug("sending interrupt")
+                self.conversation.logger.debug("Human started speaking")
 
     async def check_for_idle(self):
         """Terminates the conversation after 15 seconds if no activity is detected"""
