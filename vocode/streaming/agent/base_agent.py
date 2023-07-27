@@ -123,6 +123,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         action_factory: ActionFactory = ActionFactory(),
         interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
         logger: Optional[logging.Logger] = None,
+        wake_up_word: Optional[str] = None,
     ):
         self.input_queue: asyncio.Queue[
             InterruptibleEvent[AgentInput]
@@ -149,6 +150,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
                 self.goodbye_model.initialize_embeddings()
             )
         self.transcript: Optional[Transcript] = None
+        self.wake_up_word = wake_up_word
 
         self.functions = self.get_functions() if self.agent_config.actions else None
         self.is_muted = False
