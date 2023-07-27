@@ -32,6 +32,10 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
         self.transcriber_config = transcriber_config
         self.is_muted = False
 
+    def detect_wake_word(self, transcribed_text: str) -> bool:
+        wake_word = self.get_transcriber_config().wake_word
+        return wake_word in transcribed_text.split()
+
     def mute(self):
         self.is_muted = True
 
