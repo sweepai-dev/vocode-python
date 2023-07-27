@@ -114,6 +114,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 and self.conversation.agent.get_agent_config().wake_up_word is not None
                 and self.conversation.agent.get_agent_config().wake_up_word != ""
+                and self.conversation.agent.get_agent_config().wake_up_word in transcription.message
             ):
                 self.conversation.current_transcription_is_interrupt = (
                     self.conversation.broadcast_interrupt()
