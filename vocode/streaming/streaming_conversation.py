@@ -401,14 +401,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.bot_sentiment = None
         if self.agent.get_agent_config().track_bot_sentiment:
             self.sentiment_config = (
-                self.synthesizer.get_synthesizer_config().sentiment_config
-            )
-            if not self.sentiment_config:
-                self.sentiment_config = SentimentConfig()
-            self.bot_sentiment_analyser = BotSentimentAnalyser(
-                emotions=self.sentiment_config.emotions
-            )
-
+            if (
+                self.conversation.wake_up_word in transcription.message
+                and transcription.confidence
+                >= (
+                    self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
+                    or 0
+                )
+            ):
         self.is_human_speaking = False
         self.active = False
         self.mark_last_action_timestamp()
@@ -431,17 +431,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
         self.output_device.start()
-        if self.filler_audio_worker is not None:
-            self.filler_audio_worker.start()
-        if self.actions_worker is not None:
-            self.actions_worker.start()
-        is_ready = await self.transcriber.ready()
-        if not is_ready:
-            raise Exception("Transcriber startup failed")
-        if self.agent.get_agent_config().send_filler_audio:
-            if not isinstance(
-                self.agent.get_agent_config().send_filler_audio, FillerAudioConfig
-            ):
+    def __init__(
+        self,
+        output_device: OutputDeviceType,
+        transcriber: BaseTranscriber[TranscriberConfig],
+        agent: BaseAgent,
+        synthesizer: BaseSynthesizer,
+        conversation_id: Optional[str] = None,
+        per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
+        events_manager: Optional[EventsManager] = None,
+        logger: Optional[logging.Logger] = None,
+        wake_up_word: str = "Alexa",
+    ):
+        self.wake_up_word = wake_up_word
                 self.filler_audio_config = FillerAudioConfig()
             else:
                 self.filler_audio_config = typing.cast(
